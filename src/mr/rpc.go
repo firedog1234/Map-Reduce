@@ -24,6 +24,26 @@ type ExampleReply struct {
 
 // Add your RPC definitions here.
 
+type RequestTask struct {
+	WorkerID int
+}
+
+type RequestedTaskReply struct {
+	WorkerID int
+	TaskType string
+	FileName string
+	NReduce  int
+	TaskID   int
+}
+
+type ReportBackToMaster struct {
+	WorkerID int
+	TaskType string
+	TaskID   int
+}
+type ReportTaskToWorker struct {
+	CanExit bool
+}
 
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the coordinator.
