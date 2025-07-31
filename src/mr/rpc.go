@@ -29,7 +29,6 @@ type RequestTask struct {
 }
 
 type RequestedTaskReply struct {
-	WorkerID int
 	TaskType string
 	FileName string
 	NReduce  int
