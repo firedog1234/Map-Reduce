@@ -44,6 +44,24 @@ func RequestATask(someID int) *RequestedTaskReply {
 	return &theReply
 }
 
+/*type ReportBackToMaster struct {
+	WorkerID int
+	TaskType string
+	TaskID   int
+}*/
+
+func ReportTaskDone(taskType string, taskID int, workerID int) {
+	var reply bool
+	report := ReportBackToMaster{
+		WorkerID: workerID,
+		TaskType: taskType,
+		TaskID:   taskID,
+	}
+
+	call("Coordinator.RecievedTaskDone", &report, &reply)
+
+}
+
 func CallExample() {
 
 	// declare an argument structure.

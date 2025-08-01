@@ -13,12 +13,14 @@ import "net/http"
 
 type Coordinator struct {
 	// Your definitions here.
-	mu          sync.Mutex
-	mapTasks    []TaskMetaData
-	reduceTasks []TaskMetaData
-	inputFiles  []string
-	nMap        int
-	nReduce     int
+	mu           sync.Mutex
+	mapTasks     []TaskMetaData
+	reduceTasks  []TaskMetaData
+	inputFiles   []string
+	nMap         int
+	nReduce      int
+	isMapDone    bool
+	isReduceDone bool
 }
 
 type TaskMetaData struct {
@@ -27,6 +29,7 @@ type TaskMetaData struct {
 	FileName     string
 	WorkerID     int
 	TaskStatus   string
+	TaskID       int
 }
 
 // Your code here -- RPC handlers for the worker to call.
@@ -52,7 +55,6 @@ func (c *Coordinator) AssignTask(requestTask *RequestTask, taskReply *RequestedT
 
 	mapCompleteCount := 0
 	reduceCompleteCount := 0
-	isMapCompleted := false
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -61,9 +63,9 @@ func (c *Coordinator) AssignTask(requestTask *RequestTask, taskReply *RequestedT
 			mapCompleteCount++
 		}
 	}
-	isMapCompleted = (mapCompleteCount == len(c.mapTasks))
+	c.isMapDone = (mapCompleteCount == len(c.mapTasks))
 
-	if len(c.mapTasks) != 0 && !isMapCompleted {
+	if len(c.mapTasks) != 0 && !c.isMapDone {
 
 		for i := 0; i < len(c.mapTasks); i++ {
 			if c.mapTasks[i].TaskStatus == "IDLE" {
@@ -71,6 +73,7 @@ func (c *Coordinator) AssignTask(requestTask *RequestTask, taskReply *RequestedT
 				taskReply.FileName = c.mapTasks[i].FileName
 				taskReply.NReduce = c.nReduce
 				taskReply.TaskID = rand.Intn(99999)
+				c.mapTasks[i].TaskID = rand.Intn(999999)
 				c.mapTasks[i].WorkerID = requestTask.WorkerID
 				c.mapTasks[i].TaskStatus = "IP"
 				c.mapTasks[i].TimeReceived = time.Now()
@@ -82,13 +85,14 @@ func (c *Coordinator) AssignTask(requestTask *RequestTask, taskReply *RequestedT
 
 	}
 
-	if isMapCompleted && len(c.reduceTasks) != 0 {
+	if c.isMapDone && len(c.reduceTasks) != 0 {
 		for i := 0; i < len(c.reduceTasks); i++ {
 			if c.reduceTasks[i].TaskStatus == "IDLE" {
 				taskReply.TaskType = "REDUCE"
 				taskReply.FileName = c.reduceTasks[i].FileName
 				taskReply.NReduce = c.nReduce
 				taskReply.TaskID = rand.Intn(99999)
+				c.reduceTasks[i].TaskID = rand.Intn(999999)
 				c.reduceTasks[i].WorkerID = requestTask.WorkerID
 				c.reduceTasks[i].TaskStatus = "IP"
 				c.reduceTasks[i].TimeReceived = time.Now()
@@ -99,6 +103,24 @@ func (c *Coordinator) AssignTask(requestTask *RequestTask, taskReply *RequestedT
 			}
 		}
 
+	}
+}
+
+func (c *Coordinator) RecievedTaskDone(TheReport *ReportBackToMaster) {
+	if TheReport.TaskType == "MAP" {
+		for i := 0; i < len(c.mapTasks); i++ {
+			if c.mapTasks[i].TaskID == TheReport.TaskID {
+				c.mapTasks[i].TaskStatus = "COMPLETE"
+				break
+			}
+		}
+	} else if TheReport.TaskType == "MAP" {
+		for i := 0; i < len(c.mapTasks); i++ {
+			if c.mapTasks[i].TaskID == TheReport.TaskID {
+				c.mapTasks[i].TaskStatus = "COMPLETE"
+				break
+			}
+		}
 	}
 }
 
@@ -119,11 +141,8 @@ func (c *Coordinator) server() {
 // main/mrcoordinator.go calls Done() periodically to find out
 // if the entire job has finished.
 func (c *Coordinator) Done() bool {
-	ret := false
 
-	// Your code here.
-
-	return ret
+	return c.isReduceDone && c.isMapDone
 }
 
 // create a Coordinator.
@@ -149,7 +168,10 @@ func (c *Coordinator) Done() bool {
 }*/
 
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
-	c := Coordinator{}
+	c := Coordinator{
+		isMapDone:    false,
+		isReduceDone: false,
+	}
 
 	for i := 0; i < len(files); i++ {
 		taskM := TaskMetaData{
