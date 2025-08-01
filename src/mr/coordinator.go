@@ -151,17 +151,24 @@ func (c *Coordinator) Done() bool {
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
 
-	for i := 0; i < len(c.mapTasks); i++ {
-		task := TaskMetaData{
+	for i := 0; i < len(files); i++ {
+		taskM := TaskMetaData{
 			TaskType:   "MAP",
 			FileName:   files[i],
 			TaskStatus: "IDLE",
 		}
-		c.mapTasks = append(c.mapTasks, task)
+		c.mapTasks = append(c.mapTasks, taskM)
 		c.nReduce = nReduce
 
 	}
 
+	for i := 0; i < nReduce; i++ {
+		taskR := TaskMetaData{
+			TaskType:   "REDUCE",
+			TaskStatus: "IDLE",
+		}
+		c.reduceTasks = append(c.reduceTasks, taskR)
+	}
 	// Your code here.
 
 	c.server()
